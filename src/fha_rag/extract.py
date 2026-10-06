@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
-
+import re
 import pymupdf
 
 PDF = Path("data/raw/hud_4000_1.pdf")
 SECTIONS = Path("data/processed/sections.jsonl")
 OUT = Path("data/processed/sections_text.jsonl")
+FOOTER = re.compile(r"Handbook 4000\.1\s*\n\d+\s*\nLast Revised: \S+\s*\n?")
 
 BODY_TOP = 84       # <-- replace with your number
 BODY_BOTTOM = 733   # <-- replace with your number
@@ -23,7 +24,7 @@ def text_between(doc, start, end):
             continue
         clip = pymupdf.Rect(0, top, page.rect.width, bottom)
         parts.append(page.get_text("text", clip=clip).strip())
-    return "\n".join(x for x in parts if x)
+    return FOOTER.sub("", "\n".join(x for x in parts if x))
 
 
 def build():
