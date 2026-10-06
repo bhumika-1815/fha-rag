@@ -35,7 +35,7 @@ if __name__ == "__main__":
         bm25, dense = BM25Retriever(chunks), DenseRetriever(chunks, chunking)
         hybrid = HybridRetriever(bm25, dense)
         for label, retriever in (("bm25", bm25), ("dense", dense), ("hybrid", hybrid),
-                                 ("hybrid+rerank", RerankRetriever(hybrid))):
+                                 ("hybrid+rerank", RerankRetriever(hybrid, depth=100))):
             scores, ranks = evaluate(retriever, answerable)
             table.append((chunking, label, scores))
             per_question[f"{label}/{chunking}"] = ranks
