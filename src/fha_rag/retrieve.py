@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from rank_bm25 import BM25Okapi
 
@@ -10,6 +10,7 @@ DATA = Path("data/processed")
 INDEX = Path("data/index")
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 def load_chunks(name):
     """name is 'fixed' or 'section'."""
@@ -55,7 +56,7 @@ class DenseRetriever:
         best = np.argsort(-scores)[:k]
         return [self.chunks[i] for i in best]
 
-        
+
 class HybridRetriever:
     """Combine keyword and semantic rankings with Reciprocal Rank Fusion."""
 
@@ -70,3 +71,17 @@ class HybridRetriever:
                 by_id[c["chunk_id"]] = c
         best = sorted(scores, key=lambda i: -scores[i])[:k]
         return [by_id[i] for i in best]
+
+
+class RerankRetriever:
+    """Get a wide candidate list from another retriever, then re-sort it with a cross-encoder."""
+
+    def __init__(self, base, depth=50):
+        self.base, self.depth = base, depth
+        self.model = CrossEncoder(RERANK_MODEL)
+
+    def search(self, question, k=10):
+        candidates = self.base.search(question, k=self.depth)
+        scores = self.model.predict([(question, c["text"]) for c in candidates])
+        order = sorted(range(len(candidates)), key=lambda i: -scores[i])[:k]
+        return [candidates[i] for i in order]
