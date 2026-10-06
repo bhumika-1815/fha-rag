@@ -2,3 +2,4 @@
 .venv/
 data/raw/*.pdf
 __pycache__/
+data/index/
