@@ -3,7 +3,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-import fitz
+import pymupdf
 
 PDF = Path("data/raw/hud_4000_1.pdf")
 OUT = Path("data/processed/sections.jsonl")
@@ -13,7 +13,7 @@ LABEL = re.compile(r"^(\(?[A-Za-z0-9]+[.)])\s+(.*)$")   # "ii." or "(A)" at the 
 
 
 def build():
-    doc = fitz.open(PDF)
+    doc = pymupdf.open(PDF)
     stack = []   # the headings above the current one
     rows = []
     for i, (level, title, page) in enumerate(doc.get_toc()):
@@ -21,9 +21,13 @@ def build():
         date = None
         if m := DATE.search(title):
             date, title = m.group(1), title[: m.start()]
+        if title == "Index":
+            continue                                   # keyword list, not policy
         label, name = "", title
         if m := LABEL.match(title):
             label, name = m.group(1), m.group(2)
+        elif m := re.match(r"^(Appendix \d+\.\d+)\s*[–-]\s*(.*)$", title):
+            label, name = m.group(1), m.group(2)       # e.g. "Appendix 4.0"
 
         stack = stack[: level - 1] + [(label, name)]
         rows.append({
